@@ -1,0 +1,160 @@
+public class BaseDao {
+
+	/**
+	 * 
+	 * @return
+	 */
+	public Connection getConnection() {
+
+		// 1);获得上下文对象
+		Context ct;
+		try {
+			ct = new InitialContext();
+			// 2);获取数据源
+			DataSource ds = (DataSource) ct.lookup("java:comp/env/jdbc/zzx");
+
+			// 3)获得连接
+			return ds.getConnection();
+		} catch (NamingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * 添加,删除,修改
+	 * 
+	 * @param sql
+	 *            :sql语句
+	 * @param obj
+	 *            一个方法里，只能有一个”…”这样的可变参数，而且置于最后
+	 * @return // public int executeSQL(String sql,Object[] obj){
+	 */
+	public int executeSQL(String sql, Object... obj) {
+		// 1>获得连接
+		Connection con = this.getConnection();
+		// 2>获得ps对象
+		PreparedStatement ps = null;
+		try {
+			ps = con.prepareStatement(sql);
+
+			// 3>参数赋值
+			for (int i = 0; i < obj.length; i++) {
+				ps.setObject(i + 1, obj[i]);
+			}
+
+			// 4>执行sql语句
+			return ps.executeUpdate();
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			this.closeAll(null, ps, con); // 关闭连接
+		}
+
+		return 0;
+
+	}
+
+	/**
+	 * 查询
+	 * @param sql
+	 * @param obj
+	 * @return  Map<String, Object> (key=value)==>id=1002
+	 */
+	public List<Map<String, Object>> executeFind(String sql, Object... obj) {
+
+		// 集合对象
+		List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+
+		// 1>连接对象
+		Connection con = this.getConnection();
+
+		// 2>ps对象
+		PreparedStatement ps = null;
+
+		ResultSet rs = null;
+		try {
+			ps = con.prepareStatement(sql);
+
+			// 3>参数赋值
+			for (int i = 0; i < obj.length; i++) {
+				ps.setObject(i + 1, obj[i]);
+			}
+
+			// 4>获得rs对象
+			rs = ps.executeQuery();
+
+			// 5>获得元数据 :获得列名字段名
+			ResultSetMetaData rsmd = rs.getMetaData();
+
+			// 6>遍历数据
+			while (rs.next()) {
+				// map集合
+				Map<String, Object> map = new HashMap<String, Object>();
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					String key = rsmd.getColumnName(i); // 获得字段名
+					Object value = rs.getObject(i); // 获得值
+					// 添加到map中
+					map.put(key, value);
+				}
+
+				// 添加List中
+				list.add(map);
+			}
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+
+			this.closeAll(rs, ps, con);
+		}
+
+		return list;
+
+	}
+
+	/**
+	 * 关闭所有的连接
+	 * 
+	 * @param rs
+	 * @param ps
+	 * @param conn
+	 */
+
+	public void closeAll(ResultSet rs, PreparedStatement ps, Connection conn) {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		if (conn != null) {
+			try {
+				conn.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
